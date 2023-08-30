@@ -1,5 +1,14 @@
 from rest_framework import serializers
-from api.models import Review
+from reviews.models import Review, Comment
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    author = serializers.HiddenField(default=serializers.CurrentUserDefault())
+
+    class Meta:
+        model = Comment
+        fields = ['id', 'review', 'text', 'author', 'pub_date']
+        read_only_fields = ['id', 'pub_date']
 
 
 class ReviewSerializer(serializers.ModelSerializer):
