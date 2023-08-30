@@ -27,7 +27,7 @@ class Genres(models.Model):
         return self.name
 
 
-class Title(models.Model):
+class Titles(models.Model):
     name = models.CharField(max_length=256)
     year = models.IntegerField()
     description = models.TextField(blank=True)
