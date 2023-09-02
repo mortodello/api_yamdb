@@ -10,7 +10,6 @@ REVIEW_TEXT_PRESENTATION_LENGTH = 50
 class Categories(models.Model):
     name = models.CharField(max_length=256)
     slug = models.SlugField(unique=True, max_length=56)
-    # ^[-a-zA-Z0-9_]+$
 
     class Meta:
         verbose_name = 'Категория'
@@ -23,7 +22,6 @@ class Categories(models.Model):
 class Genres(models.Model):
     name = models.CharField(max_length=256)
     slug = models.SlugField(unique=True, max_length=56)
-    # ^[-a-zA-Z0-9_]+$
 
     class Meta:
         verbose_name = 'Жанр'
@@ -80,6 +78,7 @@ class Review(models.Model):
 
     def __str__(self):
         return self.text[:REVIEW_TEXT_PRESENTATION_LENGTH]
+
 
 class Comment(models.Model):
     review = models.ForeignKey(
