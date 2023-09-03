@@ -4,7 +4,8 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.shortcuts import get_object_or_404
 
 from reviews.models import Categories, Genres, Titles, Review, Comment
-from .permissions import AuthorOrReadOnly, Moderator, Administrator
+from .permissions import AuthorOrReadOnly
+#, Moderator, Administrator
 from .serializers import (
     CategoriesSerializer,
     GenresSerializer,
@@ -52,7 +53,7 @@ class TitlesViewSet(viewsets.ModelViewSet):
 class CommentViewSet(viewsets.ModelViewSet):
     serializer_class = CommentSerializer
     pagination_class = PageNumberPagination
-    permission_classes = [AuthorOrReadOnly, Moderator, Administrator]
+    # permission_classes = [AuthorOrReadOnly, Moderator, Administrator]
 
     def get_review(self):
         return get_object_or_404(
@@ -68,7 +69,7 @@ class CommentViewSet(viewsets.ModelViewSet):
 class ReviewViewSet(viewsets.ModelViewSet):
     serializer_class = ReviewSerializer
     pagination_class = PageNumberPagination
-    permission_classes = (AuthorOrReadOnly)
+    # permission_classes = (AuthorOrReadOnly)
 
     def get_queryset(self):
         title = get_object_or_404(Titles, id=self.kwargs['title_id'])
