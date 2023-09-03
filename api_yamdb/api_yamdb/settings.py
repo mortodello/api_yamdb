@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'users_yamdb',
     'api',
     'reviews',
     'django_filters',
@@ -91,6 +92,11 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 10,
 }
 
+AUTH_USER_MODEL = 'users_yamdb.YaMDBUser'
+
+REST_AUTH_SERIALIZERS = {
+    'USER_DETAILS_SERIALIZER': 'users_yamdb.serializers.UserSerializer',
+}
 
 # Internationalization
 
