@@ -17,6 +17,7 @@ class GenresSerializer(serializers.ModelSerializer):
         fields = ('name', 'slug')
         model = Genres
 
+
 # этот сериализатор для просмотра, в нем данные отображаются как в таблице
 class TitlesGetSerializer(serializers.ModelSerializer):
     # эти поля отображают объекты соответствующих таблиц согласно ТЗ
@@ -32,9 +33,16 @@ class TitlesGetSerializer(serializers.ModelSerializer):
         model = Titles
 
     def get_rating(self, obj):
-        # здесь будет метод подсчёта рейтинга
-        # пока заглушка возвращает 10
-        return 10
+        rating_list = []
+        score = 0
+        ratings = obj.reviews.all()
+        for rating in ratings:
+            rating_list.append(rating.score)
+        for i in rating_list:
+            score += i
+        if len(rating_list) == 0:
+            return 0
+        return int(score / len(rating_list))
 
 
 # этот сериализатор для создания/изменения,
@@ -46,17 +54,6 @@ class TitlesPostSerializer(serializers.ModelSerializer):
     class Meta:
         fields = ('name', 'year', 'description', 'genre', 'category')
         model = Titles
-
-    # тип поля сериализатор не подходит для записи,
-    # надо указать явно, что куда записывать
-    def create(self, validated_data):
-        validated_data.pop('genre')
-        title = Titles.objects.create(**validated_data)
-        # здесь будет код для сохранения жанров
-        return title
-
-    def update():
-        ...
 
     # валидатор для года на уровне сериализатора
     def validate_year(self, value):

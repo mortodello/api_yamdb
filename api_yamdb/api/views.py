@@ -42,8 +42,4 @@ class TitlesViewSet(viewsets.ModelViewSet):
         # здесь будет выбор сериализатора, пока в работе
         if self.action == 'create':
             return TitlesPostSerializer
-        # if self.action == 'update':
-        #    return TitlesPostSerializer
-        # if self.action == 'partial_update':
-        #    return TitlesPostSerializer
         return TitlesGetSerializer
