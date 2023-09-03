@@ -3,9 +3,8 @@ from rest_framework.pagination import PageNumberPagination
 from django_filters.rest_framework import DjangoFilterBackend
 from django.shortcuts import get_object_or_404
 
+from users_yamdb.permissions import AuthorOrReadOnly, Moderator, Administrator
 from reviews.models import Categories, Genres, Titles, Review, Comment
-from .permissions import AuthorOrReadOnly
-#, Moderator, Administrator
 from .serializers import (
     CategoriesSerializer,
     GenresSerializer,
@@ -77,4 +76,4 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(
-            author=self.request.user, title_id=self.kwargs['title_id'])
+            author=self.request.user, title=self.kwargs['title_id'])
