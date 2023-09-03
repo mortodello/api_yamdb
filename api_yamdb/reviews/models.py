@@ -2,6 +2,8 @@ from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.contrib.auth import get_user_model
 
+from .validators import year_validator
+
 User = get_user_model()
 
 REVIEW_TEXT_PRESENTATION_LENGTH = 50
@@ -33,11 +35,13 @@ class Genres(models.Model):
 
 class Titles(models.Model):
     name = models.CharField(max_length=256)
-    year = models.IntegerField()
+    # добавил валидатор на уровне модели
+    year = models.IntegerField(validators=(year_validator,),)
     description = models.TextField(blank=True)
     genre = models.ManyToManyField(
         Genres,
-        related_name='titles'
+        related_name='titles',
+        through='GenresTitles'
     )
     category = models.ForeignKey(
         Categories,
@@ -52,6 +56,14 @@ class Titles(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class GenresTitles(models.Model):
+    genre = models.ForeignKey(Genres, on_delete=models.SET_NULL, null=True)
+    title = models.ForeignKey(Titles, on_delete=models.SET_NULL, null=True)
+
+    def __str__(self):
+        return f'{self.genre} {self.title}'
 
 
 class Review(models.Model):
