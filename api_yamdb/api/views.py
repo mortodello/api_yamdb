@@ -3,7 +3,7 @@ from rest_framework.pagination import PageNumberPagination
 from django.shortcuts import get_object_or_404
 from api.serializers import ReviewSerializer, CommentSerializer
 from .permissions import AuthorOrReadOnly, Moderator, Administrator
-from reviews.models import Review, Title, Comment
+from reviews.models import Review, Titles, Comment
 
 
 class CommentViewSet(viewsets.ModelViewSet):
@@ -28,7 +28,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
     permission_classes = (AuthorOrReadOnly)
 
     def get_queryset(self):
-        title = get_object_or_404(Title, id=self.kwargs['title_id'])
+        title = get_object_or_404(Titles, id=self.kwargs['title_id'])
         return title.reviews.all()
 
     def perform_create(self, serializer):
