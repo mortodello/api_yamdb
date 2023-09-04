@@ -67,25 +67,22 @@ class GenresTitles(models.Model):
 
 class Review(models.Model):
     title = models.ForeignKey(
-        Titles, on_delete=models.CASCADE, related_name='reviews')
+        Titles, on_delete=models.CASCADE, related_name='reviews'
+    )
     score = models.PositiveSmallIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(10)]
     )
     text = models.TextField()
     author = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name='reviews')
+        User, on_delete=models.CASCADE, related_name='reviews'
+    )
     pub_date = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
         verbose_name = 'Отзыв'
         verbose_name_plural = 'Отзывы'
         ordering = ('-pub_date',)
-        constraints = [
-            models.UniqueConstraint(
-                fields=['title', 'author'],
-                name='unique_title_author'
-            )
-        ]
+        unique_together = ('title', 'author')
 
     def __str__(self):
         return self.text[:REVIEW_TEXT_PRESENTATION_LENGTH]
