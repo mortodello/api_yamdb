@@ -1,7 +1,9 @@
 from datetime import date
 from rest_framework import serializers
+from rest_framework.relations import SlugRelatedField
 
-from reviews.models import Categories, Genres, Titles, GenresTitles, Review, Comment
+from reviews.models import (Categories, Genres, Titles,
+                            GenresTitles, Review, Comment)
 
 
 class CategoriesSerializer(serializers.ModelSerializer):
@@ -18,41 +20,16 @@ class GenresSerializer(serializers.ModelSerializer):
         model = Genres
 
 
-# этот сериализатор для просмотра, в нем данные отображаются как в таблице
-class TitlesGetSerializer(serializers.ModelSerializer):
-    # эти поля отображают объекты соответствующих таблиц согласно ТЗ
-    # поэтому тип - сериализатор
-    category = CategoriesSerializer()
-    genre = GenresSerializer(many=True)
-    # это поле будет создаваться на лету, т.к. рейинг непостоянен
+class TitlesSerializer(serializers.ModelSerializer):
+    category = SlugRelatedField(queryset=Categories.objects.all(),
+                                slug_field='slug', required=True)
+    genre = SlugRelatedField(queryset=Genres.objects.all(),
+                             slug_field='slug', required=True, many=True)
     rating = serializers.SerializerMethodField()
 
     class Meta:
         fields = ('id', 'name', 'year', 'rating',
                   'description', 'genre', 'category')
-        model = Titles
-
-    def get_rating(self, obj):
-        rating_list = []
-        score = 0
-        ratings = obj.reviews.all()
-        for rating in ratings:
-            rating_list.append(rating.score)
-        for i in rating_list:
-            score += i
-        if len(rating_list) == 0:
-            return 0
-        return int(score / len(rating_list))
-
-
-# этот сериализатор для создания/изменения,
-# в нем категория и жанр выбираются из предложенного
-class TitlesPostSerializer(serializers.ModelSerializer):
-    category = serializers.ChoiceField(choices=Categories.objects.all())
-    genre = serializers.MultipleChoiceField(choices=Genres.objects.all())
-
-    class Meta:
-        fields = ('name', 'year', 'description', 'genre', 'category')
         model = Titles
 
     # валидатор для года на уровне сериализатора
@@ -62,6 +39,25 @@ class TitlesPostSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 'Произведения из будущего не принимаются!')
         return value
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['category'] = CategoriesSerializer(
+            instance.category).data
+        representation['genre'] = GenresSerializer(
+            instance.genre.all(), many=True).data
+        return representation
+
+    def get_rating(self, obj):
+        score = 0
+        count = 0
+        ratings = obj.reviews.all()
+        for rating in ratings:
+            score += rating.score
+            count += 1
+        if score == 0:
+            return None
+        return int(score / count)
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -80,5 +76,5 @@ class ReviewSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Review
-        fields = ['id', 'title', 'score', 'text', 'author', 'pub_date']
-        read_only_fields = ['id', 'author', 'pub_date']
+        fields = ['id', 'score', 'text', 'author', 'pub_date']
+        read_only_fields = ['id', 'author', 'pub_date', 'title']

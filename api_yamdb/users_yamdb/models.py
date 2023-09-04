@@ -9,6 +9,7 @@ CHOICES = (
     ('admin', 'Администратор'),
 )
 
+
 class YaMDBUser(AbstractUser):
     email = models.EmailField(unique=True, blank=False, null=False)
     bio = models.TextField('Biography', blank=True)
@@ -17,10 +18,10 @@ class YaMDBUser(AbstractUser):
 
     def tokens(self):
         refresh = RefreshToken.for_user(self)
-        return({
+        return ({
             'refresh': str(refresh),
             'refresh': str(refresh.access_token),
         })
-    
+
     def __str__(self):
         return self.username

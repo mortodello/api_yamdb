@@ -35,7 +35,6 @@ class Genres(models.Model):
 
 class Titles(models.Model):
     name = models.CharField(max_length=256)
-    # добавил валидатор на уровне модели
     year = models.IntegerField(validators=(year_validator,),)
     description = models.TextField(blank=True)
     genre = models.ManyToManyField(

@@ -8,8 +8,7 @@ from reviews.models import Categories, Genres, Titles, Review, Comment
 from .serializers import (
     CategoriesSerializer,
     GenresSerializer,
-    TitlesGetSerializer,
-    TitlesPostSerializer,
+    TitlesSerializer,
     ReviewSerializer,
     CommentSerializer
 )
@@ -36,17 +35,11 @@ class GenresViewSet(viewsets.ModelViewSet):
 
 class TitlesViewSet(viewsets.ModelViewSet):
     queryset = Titles.objects.all()
-    serializer_class = TitlesGetSerializer
+    serializer_class = TitlesSerializer
     filter_backends = (DjangoFilterBackend,)
     filterset_fields = ('category', 'genre', 'name', 'year')
     pagination_class = PageNumberPagination
     # permission_classes = (Administrator,)
-
-    def get_serializer_class(self):
-        # здесь будет выбор сериализатора, пока в работе
-        if self.action == 'create':
-            return TitlesPostSerializer
-        return TitlesGetSerializer
 
 
 class CommentViewSet(viewsets.ModelViewSet):
@@ -75,5 +68,6 @@ class ReviewViewSet(viewsets.ModelViewSet):
         return title.reviews.all()
 
     def perform_create(self, serializer):
-        serializer.save(
-            author=self.request.user, title=self.kwargs['title_id'])
+        serializer.save(author=self.request.user,
+                        title=get_object_or_404(Titles,
+                                                id=self.kwargs['title_id']))

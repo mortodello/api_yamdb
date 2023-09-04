@@ -7,14 +7,15 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = YaMDBUser
-        fields = ['username', 'email', 'first_name', 'last_name', 'bio', 'role']
+        fields = ['username', 'email', 'first_name',
+                  'last_name', 'bio', 'role']
 
 
 class UserEmailSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(required=True)
     username = serializers.CharField(required=True)
-    confirmation_code = serializers.CharField(write_only =True)
-    
+    confirmation_code = serializers.CharField(write_only=True)
+
     class Meta:
         model = YaMDBUser
         fields = ['username', 'email', 'confirmation_code']
