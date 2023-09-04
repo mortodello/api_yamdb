@@ -21,7 +21,7 @@ class CategoriesViewSet(viewsets.ModelViewSet):
     filter_backends = (filters.SearchFilter,)
     search_fields = ('name',)
     pagination_class = PageNumberPagination
-    # permission_classes = (Administrator,)
+    # permission_classes = (Administrator, )
 
 
 class GenresViewSet(viewsets.ModelViewSet):
@@ -30,22 +30,31 @@ class GenresViewSet(viewsets.ModelViewSet):
     filter_backends = (filters.SearchFilter,)
     search_fields = ('name',)
     pagination_class = PageNumberPagination
-    # permission_classes = (Administrator,)
+    # permission_classes = (Administrator, )
 
 
 class TitlesViewSet(viewsets.ModelViewSet):
-    queryset = Titles.objects.all()
     serializer_class = TitlesSerializer
     filter_backends = (DjangoFilterBackend,)
-    filterset_fields = ('category', 'genre', 'name', 'year')
+    filterset_fields = ('name', 'year')
     pagination_class = PageNumberPagination
-    # permission_classes = (Administrator,)
+    # permission_classes = (Administrator, )
+
+    def get_queryset(self):
+        queryset = Titles.objects.all()
+        category = self.request.query_params.get('category')
+        genre = self.request.query_params.get('genre')
+        if category is not None:
+            queryset = queryset.filter(category__slug=category)
+        if genre is not None:
+            queryset = queryset.filter(genre__slug=genre)
+        return queryset
 
 
 class CommentViewSet(viewsets.ModelViewSet):
     serializer_class = CommentSerializer
     pagination_class = PageNumberPagination
-    # permission_classes = [AuthorOrReadOnly, Moderator, Administrator]
+    # permission_classes = (AuthorOrReadOnly, Moderator, Administrator, )
 
     def get_review(self):
         return get_object_or_404(
@@ -61,7 +70,7 @@ class CommentViewSet(viewsets.ModelViewSet):
 class ReviewViewSet(viewsets.ModelViewSet):
     serializer_class = ReviewSerializer
     pagination_class = PageNumberPagination
-    # permission_classes = (AuthorOrReadOnly)
+    # permission_classes = (AuthorOrReadOnly, )
 
     def get_queryset(self):
         title = get_object_or_404(Titles, id=self.kwargs['title_id'])
