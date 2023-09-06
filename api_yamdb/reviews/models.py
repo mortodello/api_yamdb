@@ -16,6 +16,7 @@ class Categories(models.Model):
     class Meta:
         verbose_name = 'Категория'
         verbose_name_plural = 'Категории'
+        ordering = ('name',)
 
     def __str__(self):
         return self.name
@@ -28,12 +29,13 @@ class Genres(models.Model):
     class Meta:
         verbose_name = 'Жанр'
         verbose_name_plural = 'Жанры'
+        ordering = ('name',)
 
     def __str__(self):
         return self.name
 
 
-class Titles(models.Model):
+class Title(models.Model):
     name = models.CharField(max_length=256)
     year = models.IntegerField(validators=(year_validator,),)
     description = models.TextField(blank=True)
@@ -52,6 +54,7 @@ class Titles(models.Model):
     class Meta:
         verbose_name = 'Произведение'
         verbose_name_plural = 'Произведния'
+        ordering = ('name',)
 
     def __str__(self):
         return self.name
@@ -59,7 +62,7 @@ class Titles(models.Model):
 
 class GenresTitles(models.Model):
     genre = models.ForeignKey(Genres, on_delete=models.SET_NULL, null=True)
-    title = models.ForeignKey(Titles, on_delete=models.SET_NULL, null=True)
+    title = models.ForeignKey(Title, on_delete=models.SET_NULL, null=True)
 
     def __str__(self):
         return f'{self.genre} {self.title}'
@@ -67,7 +70,7 @@ class GenresTitles(models.Model):
 
 class Review(models.Model):
     title = models.ForeignKey(
-        Titles, on_delete=models.CASCADE, related_name='reviews'
+        Title, on_delete=models.CASCADE, related_name='reviews'
     )
     score = models.PositiveSmallIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(10)]

@@ -1,8 +1,10 @@
 from datetime import date
+
 from rest_framework import serializers
 from rest_framework.relations import SlugRelatedField
+from rest_framework.exceptions import ValidationError
 
-from reviews.models import (Categories, Genres, Titles,
+from reviews.models import (Categories, Genres, Title,
                             Review, Comment)
 
 
@@ -20,7 +22,7 @@ class GenresSerializer(serializers.ModelSerializer):
         model = Genres
 
 
-class TitlesSerializer(serializers.ModelSerializer):
+class TitleSerializer(serializers.ModelSerializer):
     category = SlugRelatedField(queryset=Categories.objects.all(),
                                 slug_field='slug', required=True)
     genre = SlugRelatedField(queryset=Genres.objects.all(),
@@ -30,9 +32,8 @@ class TitlesSerializer(serializers.ModelSerializer):
     class Meta:
         fields = ('id', 'name', 'year', 'rating',
                   'description', 'genre', 'category')
-        model = Titles
+        model = Title
 
-    # валидатор для года на уровне сериализатора
     def validate_year(self, value):
         current_year = date.today().year
         if value > current_year:
@@ -78,3 +79,16 @@ class ReviewSerializer(serializers.ModelSerializer):
         model = Review
         fields = ['id', 'score', 'text', 'author', 'pub_date']
         read_only_fields = ['id', 'author', 'pub_date', 'title']
+
+    def validate(self, data):
+        title_id = self.context['view'].kwargs['title_id']
+        author = self.context['request'].user
+        method = self.context['request'].method
+
+        if method == 'POST' and Review.objects.filter(
+            author=author, title_id=title_id
+        ).exists():
+            raise ValidationError(
+                'Вы уже оставляли отзыв на это произведение!'
+            )
+        return data

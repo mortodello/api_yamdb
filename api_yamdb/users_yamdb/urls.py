@@ -6,14 +6,10 @@ from .views import UserViewSet, MyAccount, SignUp, get_jwt_token
 router_v1 = routers.SimpleRouter()
 router_v1.register('v1/users', UserViewSet, 'UserYaMDB')
 
-
 urlpatterns = [
     path(
         'v1/users/me/',
-        MyAccount.as_view({
-            'get': 'retrieve',
-            'patch': 'update'
-        }),
+        MyAccount.as_view(),
         name='MyAccount',
     ),
     path('v1/auth/signup/', SignUp.as_view(), name='signup'),
