@@ -1,6 +1,7 @@
 from rest_framework import viewsets
 from rest_framework.generics import GenericAPIView
-from rest_framework.pagination import LimitOffsetPagination
+from rest_framework.generics import RetrieveUpdateAPIView
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import filters, status
 from rest_framework import mixins
@@ -13,21 +14,44 @@ from rest_framework.permissions import AllowAny
 
 from .models import YaMDBUser
 from .permissions import Administrator
-from .serializers import (
-    UserSerializer,
-    UserEmailSerializer,
-)
+from .serializers import UserSerializer
 
 from api_yamdb import settings
+
+
+# viewset for get token
+@api_view(['POST',])
+def get_jwt_token(request):
+    data = request.data
+    username=data.get('username')
+    if not username:
+        resp = {'username': 'Field username required'}
+        return Response(resp, status=status.HTTP_400_BAD_REQUEST)
+
+    confirmation_code=data.get('confirmation_code')
+    if not confirmation_code:
+        resp = {'confirmation_code': 'Field confirmation_code required'}
+        return Response(resp, status=status.HTTP_400_BAD_REQUEST)
+    
+    user = get_object_or_404(YaMDBUser, username=username)
+
+    if user.confirmation_code==confirmation_code:
+        refresh = RefreshToken.for_user(user)
+        token = str(refresh.access_token)
+        return Response({'token': token}, status=status.HTTP_200_OK)
+
+    resp = {'confirmation_code': 'Invalid confirmation_code'}
+    return Response(resp, status=status.HTTP_400_BAD_REQUEST)
 
 
 # viewset for admin rest api
 class UserViewSet(viewsets.ModelViewSet):
 
     serializer_class = UserSerializer
+    http_method_names = ['get', 'post', 'head', 'patch', 'delete']
 
     permission_classes = [Administrator]
-    pagination_class = LimitOffsetPagination
+    pagination_class = PageNumberPagination
 
     filter_backends = (filters.SearchFilter,)
     search_fields = ('username',)
@@ -43,26 +67,34 @@ class UserViewSet(viewsets.ModelViewSet):
     lookup_value_regex = '[a-zA-Z0-9$&(._)\-]+'
 
 
-# viewset for simple rest api
-class UpdateDeleteViewSet(
-    mixins.RetrieveModelMixin, mixins.UpdateModelMixin,
-    viewsets.GenericViewSet):
-    pass
-
-
-class MyAccount(UpdateDeleteViewSet):
+class MyAccount(RetrieveUpdateAPIView):
 
     serializer_class = UserSerializer
-
     permission_classes = [IsAuthenticated]
+    http_method_names = ['get', 'patch']
 
     def get_object(self):
         return self.request.user
-
+    
+    def patch(self, request):
+        
+        # protect against unauthorized role changes
+        if request.data.get('role'):
+            request.data._mutable = True
+            del request.data['role']
+            request.data._mutable = False
+        
+        user = self.get_object()
+        serializer = self.serializer_class(instance=user, data=request.data, partial=True) # set partial=True to update a data partially
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        return Response(request.data, status=status.HTTP_400_BAD_REQUEST)
 
 # viewset for get confirmation code
 class SignUp(GenericAPIView):
-    serializer_class = UserEmailSerializer
+    serializer_class = UserSerializer
     permission_classes = [AllowAny,]
 
     # function to generate confirmation code
@@ -79,71 +111,30 @@ class SignUp(GenericAPIView):
         return code
 
     def post(self, request):
-        
-        data = request.data
-        username = data['username']
-        user_email = data['email']
-        data['confirmation_code'] = self.generate_confirmation_code()
 
-        serializer = self.serializer_class(data=data)
+        users = YaMDBUser.objects.filter(username=request.data.get('username'))
+
+        if users.count() > 0:
+            user = users[0]
+            serializer = self.serializer_class(instance=user, data=request.data, partial=True)
+        else:
+            serializer = self.serializer_class(data=request.data)
+
         serializer.is_valid(raise_exception=True)
         serializer.save()
+        user = serializer.instance
         
+
+        user.confirmation_code = self.generate_confirmation_code()
+        user.save(force_update=True)
         subject = 'welcome to Ya_mdb project!'
         message = (
-            f'Dear {username}, thank you for registering in yambd api service.'
-            f'It is your confirmation code: {data["confirmation_code"]}'
+            f'Dear {user.username}, thank you for registering in yambd api service.'
+            f'It is your confirmation code: {user.confirmation_code}'
         )
 
         email_from = settings.EMAIL_HOST_USER
-        recipient_list = [user_email, ]
+        recipient_list = [user.email, ]
         send_mail(subject, message, email_from, recipient_list,fail_silently=False,)
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-# viewset for get token
-@api_view(['POST'])
-def get_jwt_token(request):
-    data=request.data
-    user = get_object_or_404(YaMDBUser, username=data['username'])
-
-    if user.confirmation_code==data['confirmation_code']:
-        refresh = RefreshToken.for_user(user)
-        token = str(refresh.access_token)
-        return Response({'token': token}, status=status.HTTP_200_OK)
-
-    resp = {'confirmation_code': 'Неверный код подтверждения'}
-    return Response(resp, status=status.HTTP_400_BAD_REQUEST)
-
-
-
-
-
-# class GetToken(GenericAPIView):
-
-#     serializer_class = TokenSerializer
-
-#     permission_classes = [AllowAny,]
-
-#     def post(self, request):
-        
-#         data=request.data
-                
-#         user = get_object_or_404(
-#             YaMDBUser,
-#             username=data['username']
-#         )
-
-#         if user.confirmation_code!=data['confirmation_code']:
-#             resp = {'confirmation_code': 'Invalid confirmation_code'}
-#             return Response(resp, status=status.HTTP_400_BAD_REQUEST)
-        
-#         refresh = RefreshToken.for_user(user)
-#         data['tokens'] = str(refresh.access_token)
-#         serializer = self.serializer_class(data=data)
-#         serializer.is_valid(raise_exception=True)
-#         serializer.save()
-#         return Response({'token': data['tokens']}, status=status.HTTP_200_OK)
-
-
+        return Response(request.data, status=status.HTTP_200_OK)

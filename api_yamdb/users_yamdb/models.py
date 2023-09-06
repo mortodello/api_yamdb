@@ -15,12 +15,5 @@ class YaMDBUser(AbstractUser):
     role = models.CharField(max_length=16, choices=CHOICES, default='user')
     confirmation_code = models.CharField(max_length=6, blank=True)
 
-    def tokens(self):
-        refresh = RefreshToken.for_user(self)
-        return({
-            'refresh': str(refresh),
-            'refresh': str(refresh.access_token),
-        })
-    
     def __str__(self):
         return self.username
