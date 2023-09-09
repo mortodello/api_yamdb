@@ -13,8 +13,10 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import AllowAny
 
-from .models import YaMDBUser
-from .permissions import Administrator
+from .models import CustomUser
+from api.permissions import (
+    IsAdmin,
+)
 from .serializers import UserSerializer
 from api_yamdb import settings
 
@@ -33,7 +35,7 @@ def get_jwt_token(request):
         resp = {'confirmation_code': 'Field confirmation_code required'}
         return Response(resp, status=status.HTTP_400_BAD_REQUEST)
 
-    user = get_object_or_404(YaMDBUser, username=username)
+    user = get_object_or_404(CustomUser, username=username)
 
     if user.confirmation_code == confirmation_code:
         refresh = RefreshToken.for_user(user)
@@ -46,8 +48,8 @@ def get_jwt_token(request):
 
 class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
-    http_method_names = ['get', 'post', 'head', 'patch', 'delete']
-    permission_classes = [Administrator]
+    http_method_names = ['get', 'post', 'patch', 'delete']
+    permission_classes = [IsAdmin]
     pagination_class = PageNumberPagination
     filter_backends = (filters.SearchFilter,)
     search_fields = ('username',)
@@ -56,9 +58,9 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self, username=None):
         if username:
-            return get_object_or_404(YaMDBUser, username=username)
+            return get_object_or_404(CustomUser, username=username)
 
-        return YaMDBUser.objects.all()
+        return CustomUser.objects.all()
 
 
 class MyAccount(RetrieveUpdateAPIView):
@@ -88,7 +90,7 @@ class MyAccount(RetrieveUpdateAPIView):
 # viewset for get confirmation code
 class SignUp(GenericAPIView):
     serializer_class = UserSerializer
-    permission_classes = [AllowAny, ]
+    permission_classes = [AllowAny,]
 
     # function to generate confirmation code
     def generate_confirmation_code(self):
@@ -102,7 +104,7 @@ class SignUp(GenericAPIView):
         return code
 
     def post(self, request):
-        users = YaMDBUser.objects.filter(username=request.data.get('username'))
+        users = CustomUser.objects.filter(username=request.data.get('username'))
         if users.count() > 0:
             user = users[0]
             serializer = self.serializer_class(instance=user,
