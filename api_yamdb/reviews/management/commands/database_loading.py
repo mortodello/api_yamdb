@@ -1,9 +1,11 @@
 import csv
 import os
+
 from django.conf import settings
 from django.core.management import BaseCommand
-from reviews.models import (Categories, Comment, Genres, Review,
-                            Titles, GenresTitles)
+
+from reviews.models import (Categories, Comment, Genres,
+                            Review, Title, GenresTitles)
 from users_yamdb.models import YaMDBUser
 
 
@@ -12,7 +14,7 @@ class Command(BaseCommand):
         Categories: 'category.csv',
         Genres: 'genre.csv',
         GenresTitles: 'genre_title.csv',
-        Titles: 'titles.csv',
+        Title: 'titles.csv',
         Review: 'review.csv',
         Comment: 'comments.csv',
         YaMDBUser: 'users.csv',
