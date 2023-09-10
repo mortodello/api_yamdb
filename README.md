@@ -71,7 +71,7 @@ python manage.py database_loading
 python manage.py runserver
 ```
 
-### Примеры запросов и ответов смотри по адресу:
+### Примеры запросов и ответов:
 
 1. Регистрация пользователя:
    - Запрос: POST /api/v1/auth/signup/
