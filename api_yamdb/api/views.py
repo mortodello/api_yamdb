@@ -72,11 +72,14 @@ class TitleViewSet(viewsets.ModelViewSet):
         return queryset
 
 
-class CommentViewSet(viewsets.ModelViewSet):
-    serializer_class = CommentSerializer
+class BaseCommentReviewViewSet(viewsets.ModelViewSet):
     pagination_class = PageNumberPagination
     permission_classes = [AuthorOrHasRoleOrReadOnly]
     http_method_names = ['get', 'post', 'patch', 'delete']
+
+
+class CommentViewSet(BaseCommentReviewViewSet):
+    serializer_class = CommentSerializer
 
     def get_review(self):
         return get_object_or_404(
@@ -89,11 +92,8 @@ class CommentViewSet(viewsets.ModelViewSet):
         serializer.save(review=self.get_review(), author=self.request.user)
 
 
-class ReviewViewSet(viewsets.ModelViewSet):
+class ReviewViewSet(BaseCommentReviewViewSet):
     serializer_class = ReviewSerializer
-    pagination_class = PageNumberPagination
-    permission_classes = [AuthorOrHasRoleOrReadOnly]
-    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_queryset(self):
         title = get_object_or_404(Title, id=self.kwargs['title_id'])

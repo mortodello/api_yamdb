@@ -1,11 +1,16 @@
 from datetime import date
 
+from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 from rest_framework.relations import SlugRelatedField
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError as DRFValidationError
 
 from reviews.models import (Categories, Genres, Title,
                             Review, Comment)
+
+
+MIN_RATING = 1
+MAX_RATING = 10
 
 
 class CategoriesSerializer(serializers.ModelSerializer):
@@ -78,17 +83,24 @@ class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = ['id', 'score', 'text', 'author', 'pub_date']
-        read_only_fields = ['id', 'author', 'pub_date', 'title']
+        read_only_fields = ['id', 'author', 'pub_date']
+
+    def validate_score(self, value):
+        if value < MIN_RATING or value > MAX_RATING:
+            raise DRFValidationError("Оценка должна быть числом от 1 до 10.")
+        return value
 
     def validate(self, data):
         title_id = self.context['view'].kwargs['title_id']
         author = self.context['request'].user
         method = self.context['request'].method
+        title = get_object_or_404(Title, id=title_id)
 
         if method == 'POST' and Review.objects.filter(
-            author=author, title_id=title_id
+            author=author, title=title
         ).exists():
-            raise ValidationError(
+            raise DRFValidationError(
                 'Вы уже оставляли отзыв на это произведение!'
             )
+
         return data

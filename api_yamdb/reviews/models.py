@@ -6,6 +6,8 @@ from .validators import year_validator
 
 User = get_user_model()
 
+MIN_RATING = 1
+MAX_RATING = 10
 REVIEW_TEXT_PRESENTATION_LENGTH = 50
 
 
@@ -68,41 +70,43 @@ class GenresTitles(models.Model):
         return f'{self.genre} {self.title}'
 
 
-class Review(models.Model):
+class ReviewCommentBase(models.Model):
+    text = models.TextField()
+    author = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='%(class)ss'
+    )
+    pub_date = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        abstract = True
+        ordering = ('-pub_date',)
+
+    def __str__(self):
+        return self.text[:REVIEW_TEXT_PRESENTATION_LENGTH]
+
+
+class Review(ReviewCommentBase):
     title = models.ForeignKey(
         Title, on_delete=models.CASCADE, related_name='reviews'
     )
     score = models.PositiveSmallIntegerField(
-        validators=[MinValueValidator(1), MaxValueValidator(10)]
+        validators=[MinValueValidator(
+            MIN_RATING, message='Оценка должна быть не меньше 1.'),
+            MaxValueValidator(
+                MAX_RATING, message='Оценка должна быть не больше 10.')]
     )
-    text = models.TextField()
-    author = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name='reviews'
-    )
-    pub_date = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
         verbose_name = 'Отзыв'
         verbose_name_plural = 'Отзывы'
-        ordering = ('-pub_date',)
         unique_together = ('title', 'author')
 
-    def __str__(self):
-        return self.text[:REVIEW_TEXT_PRESENTATION_LENGTH]
 
-
-class Comment(models.Model):
+class Comment(ReviewCommentBase):
     review = models.ForeignKey(
-        Review, on_delete=models.CASCADE, related_name='comments')
-    text = models.TextField()
-    author = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name='comments')
-    pub_date = models.DateTimeField(auto_now_add=True, db_index=True)
+        Review, on_delete=models.CASCADE, related_name='comments'
+    )
 
     class Meta:
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Комментарии'
-        ordering = ('-pub_date',)
-
-    def __str__(self):
-        return self.text[:REVIEW_TEXT_PRESENTATION_LENGTH]
