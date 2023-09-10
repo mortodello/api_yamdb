@@ -3,8 +3,10 @@ from rest_framework.pagination import PageNumberPagination
 from django_filters.rest_framework import DjangoFilterBackend
 from django.shortcuts import get_object_or_404
 
-from users_yamdb.permissions import (AdminOrReadOnly,
-                                     AuthorOrHasRoleOrReadOnly)
+from .permissions import (
+    IsAuthorAdminModeratorOrReadOnly,
+    IsAdminOrReadOnly
+)
 from reviews.models import Categories, Genres, Title, Review
 from api.serializers import (
     CategoriesSerializer,
@@ -25,7 +27,7 @@ class CategoriesViewSet(
     filter_backends = (filters.SearchFilter,)
     search_fields = ('name',)
     pagination_class = PageNumberPagination
-    permission_classes = [AdminOrReadOnly]
+    permission_classes = [IsAdminOrReadOnly]
     lookup_field = 'slug'
 
     def get_queryset(self, slug=None):
@@ -44,7 +46,7 @@ class GenresViewSet(
     filter_backends = (filters.SearchFilter,)
     search_fields = ('name',)
     pagination_class = PageNumberPagination
-    permission_classes = [AdminOrReadOnly]
+    permission_classes = [IsAdminOrReadOnly]
     lookup_field = 'slug'
 
     def get_queryset(self, slug=None):
@@ -58,7 +60,7 @@ class TitleViewSet(viewsets.ModelViewSet):
     filter_backends = (DjangoFilterBackend,)
     filterset_fields = ('name', 'year')
     pagination_class = PageNumberPagination
-    permission_classes = [AdminOrReadOnly]
+    permission_classes = [IsAdminOrReadOnly]
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_queryset(self):
@@ -75,7 +77,7 @@ class TitleViewSet(viewsets.ModelViewSet):
 class CommentViewSet(viewsets.ModelViewSet):
     serializer_class = CommentSerializer
     pagination_class = PageNumberPagination
-    permission_classes = [AuthorOrHasRoleOrReadOnly]
+    permission_classes = [IsAuthorAdminModeratorOrReadOnly]
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_review(self):
@@ -92,7 +94,7 @@ class CommentViewSet(viewsets.ModelViewSet):
 class ReviewViewSet(viewsets.ModelViewSet):
     serializer_class = ReviewSerializer
     pagination_class = PageNumberPagination
-    permission_classes = [AuthorOrHasRoleOrReadOnly]
+    permission_classes = [IsAuthorAdminModeratorOrReadOnly]
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_queryset(self):

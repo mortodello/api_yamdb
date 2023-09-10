@@ -1,27 +1,27 @@
-import math
-import random
-
 from rest_framework import viewsets
-from rest_framework.generics import GenericAPIView, RetrieveUpdateAPIView
+from rest_framework.generics import GenericAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import filters, status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, action
 from django.shortcuts import get_object_or_404
 from django.core.mail import send_mail
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import AllowAny
+from django.contrib.auth.tokens import default_token_generator
 
-from .models import YaMDBUser
-from .permissions import Administrator
+from .models import CustomUser
+from api.permissions import (
+    IsAdmin,
+)
 from .serializers import UserSerializer
 from api_yamdb import settings
 
 
-# viewset for get token
 @api_view(['POST', ])
 def get_jwt_token(request):
+    """View function for get token."""
     data = request.data
     username = data.get('username')
     if not username:
@@ -33,9 +33,9 @@ def get_jwt_token(request):
         resp = {'confirmation_code': 'Field confirmation_code required'}
         return Response(resp, status=status.HTTP_400_BAD_REQUEST)
 
-    user = get_object_or_404(YaMDBUser, username=username)
+    user = get_object_or_404(CustomUser, username=username)
 
-    if user.confirmation_code == confirmation_code:
+    if default_token_generator.check_token(user, confirmation_code):
         refresh = RefreshToken.for_user(user)
         token = str(refresh.access_token)
         return Response({'token': token}, status=status.HTTP_200_OK)
@@ -46,8 +46,8 @@ def get_jwt_token(request):
 
 class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
-    http_method_names = ['get', 'post', 'head', 'patch', 'delete']
-    permission_classes = [Administrator]
+    http_method_names = ['get', 'post', 'patch', 'delete']
+    permission_classes = [IsAdmin]
     pagination_class = PageNumberPagination
     filter_backends = (filters.SearchFilter,)
     search_fields = ('username',)
@@ -56,70 +56,64 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self, username=None):
         if username:
-            return get_object_or_404(YaMDBUser, username=username)
+            return get_object_or_404(CustomUser, username=username)
 
-        return YaMDBUser.objects.all()
+        return CustomUser.objects.all()
 
+    @action(
+        methods=['patch', 'get'],
+        permission_classes=[IsAuthenticated],
+        detail=False,
+        url_path='me',
+        url_name='me'
+    )
+    def me(self, request, *args, **kwargs):
+        """Action function for get and patch profile data."""
+        user = self.request.user
+        serializer = self.get_serializer(user)
+        if self.request.method == 'PATCH':
+            # protect against unauthorized role changes
+            if request.data.get('role'):
+                request.data._mutable = True
+                del request.data['role']
+                request.data._mutable = False
 
-class MyAccount(RetrieveUpdateAPIView):
-    serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated]
-    http_method_names = ['get', 'patch']
-
-    def get_object(self):
-        return self.request.user
-
-    def patch(self, request):
-        # protect against unauthorized role changes
-        if request.data.get('role'):
-            request.data._mutable = True
-            del request.data['role']
-            request.data._mutable = False
-        user = self.get_object()
-        serializer = self.serializer_class(instance=user,
-                                           data=request.data, partial=True)
-        # set partial=True to update a data partially
-        if serializer.is_valid():
+            serializer = self.get_serializer(
+                user,
+                data=request.data,
+                partial=True
+            )
+            serializer.is_valid(raise_exception=True)
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(request.data, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.data)
 
 
-# viewset for get confirmation code
 class SignUp(GenericAPIView):
     serializer_class = UserSerializer
-    permission_classes = [AllowAny, ]
-
-    # function to generate confirmation code
-    def generate_confirmation_code(self):
-        # Declare a string variable which stores all chars
-        string = ('0123456789abcdefghijklmnopqrstuvwxyz'
-                  'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
-        code = ""
-        length = len(string)
-        for i in range(6):
-            code += string[math.floor(random.random() * length)]
-        return code
+    permission_classes = [AllowAny,]
 
     def post(self, request):
-        users = YaMDBUser.objects.filter(username=request.data.get('username'))
-        if users.count() > 0:
+        users = CustomUser.objects.filter(
+            username=request.data.get('username')
+        )
+        if users.exists():
             user = users[0]
             serializer = self.serializer_class(instance=user,
                                                data=request.data, partial=True)
         else:
             serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        user = serializer.instance
 
-        user.confirmation_code = self.generate_confirmation_code()
-        user.save(force_update=True)
+        serializer.is_valid(raise_exception=True)
+        user, _ = CustomUser.objects.get_or_create(
+            username=request.data.get('username'),
+            email=request.data.get('email')
+        )
+        token = default_token_generator.make_token(user,)
         subject = 'welcome to Ya_mdb project!'
         message = (
             f'Dear {user.username}, thank you'
             f'for registering in yambd api service.'
-            f'It is your confirmation code: {user.confirmation_code}'
+            f'It is your confirmation code: {token}'
         )
         email_from = settings.EMAIL_HOST_USER
         recipient_list = [user.email, ]

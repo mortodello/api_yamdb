@@ -1,11 +1,14 @@
-from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin
+from django.contrib.admin import ModelAdmin, register
+from .models import CustomUser
 
-from .models import YaMDBUser
 
-fields = list(UserAdmin.fieldsets)
-fields[1] = ('Personal info', {'fields': ('first_name', 'last_name', 'email',
-                                          'bio', 'role', 'confirmation_code')})
-UserAdmin.fieldsets = tuple(fields)
-
-admin.site.register(YaMDBUser, UserAdmin)
+@register(CustomUser)
+class CustomUserAdmin(ModelAdmin):
+    list_display = (
+        'username',
+        'email',
+        'date_joined',
+        'is_admin',
+        'is_moderator'
+    )
+    search_fields = ('email', 'username')
