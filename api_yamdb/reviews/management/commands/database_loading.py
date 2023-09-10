@@ -6,7 +6,7 @@ from django.core.management import BaseCommand
 
 from reviews.models import (Categories, Comment, Genres,
                             Review, Title, GenresTitles)
-from users_yamdb.models import YaMDBUser
+from users_yamdb.models import CustomUser
 
 
 class Command(BaseCommand):
@@ -17,7 +17,7 @@ class Command(BaseCommand):
         Title: 'titles.csv',
         Review: 'review.csv',
         Comment: 'comments.csv',
-        YaMDBUser: 'users.csv',
+        CustomUser: 'users.csv',
     }
 
     def handle(self, *args, **options):

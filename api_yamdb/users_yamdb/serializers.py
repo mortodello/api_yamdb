@@ -1,28 +1,37 @@
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
-from django.core.validators import RegexValidator
 
-from .models import YaMDBUser
+from .models import CustomUser
+
+EMAIL_LENGTH = 254
+USERNAME_LENGTH = 150
 
 
 class UserSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(
-        max_length=254,
+        max_length=EMAIL_LENGTH,
         required=True,
-        validators=[UniqueValidator(queryset=YaMDBUser.objects.all())]
+        validators=[UniqueValidator(queryset=CustomUser.objects.all())]
     )
     username = serializers.CharField(
-        max_length=150,
+        max_length=USERNAME_LENGTH,
         required=True,
         validators=[
-            UniqueValidator(queryset=YaMDBUser.objects.all()),
-            RegexValidator(regex=r'^[\w.@+-]+\Z$')
+            UniqueValidator(queryset=CustomUser.objects.all()),
         ]
     )
 
     def validate_username(self, value):
+        import re
+
         if value == 'me':
             raise serializers.ValidationError('This is username forbidden.')
+
+        for ch in value:
+            if not re.search(r'^[\w.@+-]+\Z$', ch):
+                raise serializers.ValidationError(
+                    f'Character {ch} forbidden in username.'
+                )
         return value
 
     def validate_email(self, value):
@@ -35,6 +44,6 @@ class UserSerializer(serializers.ModelSerializer):
         return value
 
     class Meta:
-        model = YaMDBUser
+        model = CustomUser
         fields = ['username', 'email', 'first_name',
                   'last_name', 'bio', 'role']
