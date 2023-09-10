@@ -1,6 +1,5 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-from rest_framework_simplejwt.tokens import RefreshToken
 
 
 ROLES = (
@@ -8,6 +7,7 @@ ROLES = (
     ('moderator', 'Модератор'),
     ('admin', 'Администратор'),
 )
+
 
 class CustomUser(AbstractUser):
     email = models.EmailField(unique=True)
@@ -17,7 +17,6 @@ class CustomUser(AbstractUser):
         choices=ROLES,
         default=ROLES[0][0]
     )
-    confirmation_code = models.CharField(max_length=6, blank=True)
     admin = models.BooleanField(default=False)
     moderator = models.BooleanField(default=False)
 
@@ -28,18 +27,18 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return self.username
-    
+
     def save(self, *args, **kwargs):
-        self.admin = (self.role=='admin')
-        self.moderator = (self.role=='moderator')
+        self.admin = (self.role == 'admin')
+        self.moderator = (self.role == 'moderator')
         super(CustomUser, self).save(*args, **kwargs)
-    
+
     @property
     def is_admin(self):
-        "Is the user a admin member?"
+        """Is the user a admin member?"""
         return self.admin
-    
+
     @property
     def is_moderator(self):
-        "Is the user a moderator member?"
+        """Is the user a moderator member?"""
         return self.moderator

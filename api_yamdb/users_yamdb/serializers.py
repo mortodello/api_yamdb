@@ -1,10 +1,8 @@
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
-from django.core.validators import RegexValidator
 
-from .models import CustomUser, ROLES
+from .models import CustomUser
 from .constansts import EMAIL_LENGTH, USERNAME_LENGTH
-
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -18,13 +16,20 @@ class UserSerializer(serializers.ModelSerializer):
         required=True,
         validators=[
             UniqueValidator(queryset=CustomUser.objects.all()),
-            RegexValidator(regex=r'^[\w.@+-]+\Z$')
         ]
     )
 
     def validate_username(self, value):
+        import re
+
         if value == 'me':
             raise serializers.ValidationError('This is username forbidden.')
+
+        for ch in value:
+            if not re.search(r'^[\w.@+-]+\Z$', ch):
+                raise serializers.ValidationError(
+                    f'Character {ch} forbidden in username.'
+                )
         return value
 
     def validate_email(self, value):
@@ -35,7 +40,7 @@ class UserSerializer(serializers.ModelSerializer):
                     'Change email strictly forbidden!'
                 )
         return value
-    
+
     class Meta:
         model = CustomUser
         fields = ['username', 'email', 'first_name',
