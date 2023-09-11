@@ -1,14 +1,19 @@
-from datetime import date
+import re
 
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 from rest_framework.relations import SlugRelatedField
-from rest_framework.exceptions import ValidationError as DRFValidationError
+from rest_framework.exceptions import ValidationError
+from rest_framework.validators import UniqueValidator
+from django.db.models import Avg
 
 from reviews.models import (Categories, Genres, Title,
                             Review, Comment)
+from users_yamdb.models import CustomUser
+from reviews.validators import year_validator
 
-
+EMAIL_LENGTH = 254
+USERNAME_LENGTH = 150
 MIN_RATING = 1
 MAX_RATING = 10
 
@@ -32,6 +37,7 @@ class TitleSerializer(serializers.ModelSerializer):
                                 slug_field='slug', required=True)
     genre = SlugRelatedField(queryset=Genres.objects.all(),
                              slug_field='slug', required=True, many=True)
+    year = serializers.IntegerField(validators=(year_validator,),)
     rating = serializers.SerializerMethodField()
 
     class Meta:
@@ -39,14 +45,9 @@ class TitleSerializer(serializers.ModelSerializer):
                   'description', 'genre', 'category')
         model = Title
 
-    def validate_year(self, value):
-        current_year = date.today().year
-        if value > current_year:
-            raise serializers.ValidationError(
-                'Произведения из будущего не принимаются!')
-        return value
-
     def to_representation(self, instance):
+        """Этот метод - альтернатива двум сериализаторам.
+           Данные на POST и GET отображаются по разному"""
         representation = super().to_representation(instance)
         representation['category'] = CategoriesSerializer(
             instance.category).data
@@ -55,15 +56,7 @@ class TitleSerializer(serializers.ModelSerializer):
         return representation
 
     def get_rating(self, obj):
-        score = 0
-        count = 0
-        ratings = obj.reviews.all()
-        for rating in ratings:
-            score += rating.score
-            count += 1
-        if score == 0:
-            return None
-        return int(score / count)
+        return obj.reviews.aggregate(Avg("score"))['score__avg']
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -87,7 +80,7 @@ class ReviewSerializer(serializers.ModelSerializer):
 
     def validate_score(self, value):
         if value < MIN_RATING or value > MAX_RATING:
-            raise DRFValidationError("Оценка должна быть числом от 1 до 10.")
+            raise ValidationError("Оценка должна быть числом от 1 до 10.")
         return value
 
     def validate(self, data):
@@ -99,8 +92,50 @@ class ReviewSerializer(serializers.ModelSerializer):
         if method == 'POST' and Review.objects.filter(
             author=author, title=title
         ).exists():
-            raise DRFValidationError(
+            raise ValidationError(
                 'Вы уже оставляли отзыв на это произведение!'
             )
 
         return data
+
+
+class UserSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(
+        max_length=EMAIL_LENGTH,
+        required=True,
+        validators=[
+            UniqueValidator(queryset=CustomUser.objects.all()),
+        ]
+    )
+    username = serializers.CharField(
+        max_length=USERNAME_LENGTH,
+        required=True,
+        validators=[
+            UniqueValidator(queryset=CustomUser.objects.all()),
+        ]
+    )
+
+    def validate_username(self, value):
+        if value == 'me':
+            raise serializers.ValidationError('This is username forbidden.')
+
+        for ch in value:
+            if not re.search(r'^[\w.@+-]+\Z$', ch):
+                raise serializers.ValidationError(
+                    f'Character {ch} forbidden in username.'
+                )
+        return value
+
+    def validate_email(self, value):
+        if self.instance:
+            initial_email = self.instance.email
+            if initial_email and initial_email != value:
+                raise serializers.ValidationError(
+                    'Change email strictly forbidden!'
+                )
+        return value
+
+    class Meta:
+        model = CustomUser
+        fields = ['username', 'email', 'first_name',
+                  'last_name', 'bio', 'role']

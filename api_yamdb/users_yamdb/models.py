@@ -1,7 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
-
 ROLES = (
     ('user', 'Пользователь'),
     ('moderator', 'Модератор'),
@@ -22,8 +21,8 @@ class CustomUser(AbstractUser):
 
     class Meta:
         ordering = ('date_joined',)
-        verbose_name = 'User'
-        verbose_name_plural = 'Users'
+        verbose_name = 'Пользователь'
+        verbose_name_plural = 'Пользователи'
 
     def __str__(self):
         return self.username

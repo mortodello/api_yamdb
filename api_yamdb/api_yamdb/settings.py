@@ -95,7 +95,7 @@ AUTH_PASSWORD_VALIDATORS = [
 AUTH_USER_MODEL = 'users_yamdb.CustomUser'
 
 REST_AUTH_SERIALIZERS = {
-    'USER_DETAILS_SERIALIZER': 'users_yamdb.serializers.UserSerializer',
+    'USER_DETAILS_SERIALIZER': 'api.serializers.UserSerializer',
 }
 
 REST_FRAMEWORK = {
