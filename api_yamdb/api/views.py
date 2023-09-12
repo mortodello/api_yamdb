@@ -1,4 +1,4 @@
-from django.db.models import Avg, Count
+from django.db.models import Avg
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django_filters.rest_framework import DjangoFilterBackend
@@ -24,7 +24,8 @@ from .serializers import (
 )
 from api_yamdb import settings
 from reviews.models import Categories, Genres, Title, Review
-from users_yamdb.models import CustomUser, USER
+from users_yamdb.models import CustomUser
+from api.filtrs import TitleFilter
 
 
 class BaseCategoriesGenresViewSet(
@@ -59,32 +60,20 @@ class GenresViewSet(BaseCategoriesGenresViewSet):
 class TitleViewSet(viewsets.ModelViewSet):
     """За различие в отображении данных на POST и GET запрос
        отвечает метод to_representation в сериализаторе"""
+    queryset = Title.objects.all().annotate(
+        rating=Avg('reviews__score')).all()
     serializer_class = TitleSerializer
     filter_backends = (DjangoFilterBackend,)
-    filterset_fields = ('name', 'year')
+    filterset_class = TitleFilter
     pagination_class = PageNumberPagination
     permission_classes = [IsAdminOrReadOnly]
     # перечисление методов необходимо для исключения метода PUT
     http_method_names = ['get', 'post', 'patch', 'delete']
 
-    def get_queryset(self):
-        """Метод поддерживает фильтрацию по категории/жанру"""
-        queryset = Title.objects.all()
-        #annotate(rating=Avg('reviews__score'))
-        # queryset = queryset.aggregate(rating=Avg('reviews__score'))
-        # Post.objects.annotate(Count('tags')).aggregate(Avg('tags__count'))
-        #for obj in queryset:
-        #    obj.reviews.aggregate(Avg("score"))['score__avg']
-        #    #obj.reviews.annotate(rating=Count('score')).aggregate(Avg('score__count'))
-        #title = get_object_or_404(pk=self.request.query_params.get('pk'))
-        #rating = title.reviews.annotate(Count('score')).aggregate(Avg('score__count'))
-        category = self.request.query_params.get('category')
-        genre = self.request.query_params.get('genre')
-        if category is not None:
-            queryset = queryset.filter(category__slug=category)
-        if genre is not None:
-            queryset = queryset.filter(genre__slug=genre)
-        return queryset
+    def get_serializer_class(self):
+        if self.action == 'create' or self.action == 'partial_update':
+            return TitleSerializer
+        return TitleSerializer
 
 
 class CommentViewSet(BaseCommentReviewViewSet):
