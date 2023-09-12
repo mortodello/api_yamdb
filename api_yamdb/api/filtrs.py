@@ -5,20 +5,16 @@ from reviews.models import Categories, Genres, Title
 
 
 class TitleFilter(django_filters.FilterSet):
-    """
-    Filtering Title objects. Defines a set of filters that
-    can be applied to filter objects of the Title model.
-    """
     name = django_filters.CharFilter(lookup_expr='icontains')
     year = django_filters.NumberFilter()
     category = django_filters.ModelChoiceFilter(
         field_name='category',
-        queryset=Categories.objects.all(),
+        queryset=Categories.objects.all().prefetch_related('titles'),
         to_field_name='slug'
     )
     genre = django_filters.ModelChoiceFilter(
         field_name='genre',
-        queryset=Genres.objects.all(),
+        queryset=Genres.objects.all().prefetch_related('titles'),
         to_field_name='slug'
     )
 
