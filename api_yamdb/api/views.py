@@ -1,21 +1,19 @@
-from rest_framework import viewsets, filters, mixins, status
-from rest_framework.pagination import PageNumberPagination
+from django.db.models import Avg, Count
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
 from django_filters.rest_framework import DjangoFilterBackend
 from django.shortcuts import get_object_or_404
-from rest_framework.generics import GenericAPIView
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework import viewsets, filters, mixins, status
 from rest_framework.decorators import api_view, action
-from django.core.mail import send_mail
+from rest_framework.generics import GenericAPIView
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.contrib.auth.tokens import default_token_generator
 
-from api_yamdb import settings
 from .permissions import (IsAdmin,
                           IsAdminOrReadOnly,
                           IsAuthorAdminModeratorOrReadOnly)
-from reviews.models import Categories, Genres, Title, Review
-from users_yamdb.models import CustomUser
 from .serializers import (
     CategoriesSerializer,
     GenresSerializer,
@@ -24,6 +22,9 @@ from .serializers import (
     CommentSerializer,
     UserSerializer
 )
+from api_yamdb import settings
+from reviews.models import Categories, Genres, Title, Review
+from users_yamdb.models import CustomUser, USER
 
 
 class BaseCategoriesGenresViewSet(
@@ -46,21 +47,13 @@ class BaseCommentReviewViewSet(viewsets.ModelViewSet):
 
 
 class CategoriesViewSet(BaseCategoriesGenresViewSet):
+    queryset = Categories.objects.all()
     serializer_class = CategoriesSerializer
-
-    def get_queryset(self, slug=None):
-        if slug:
-            return get_object_or_404(Categories, slug=slug)
-        return Categories.objects.all()
 
 
 class GenresViewSet(BaseCategoriesGenresViewSet):
+    queryset = Genres.objects.all()
     serializer_class = GenresSerializer
-
-    def get_queryset(self, slug=None):
-        if slug:
-            return get_object_or_404(Genres, slug=slug)
-        return Genres.objects.all()
 
 
 class TitleViewSet(viewsets.ModelViewSet):
@@ -71,12 +64,20 @@ class TitleViewSet(viewsets.ModelViewSet):
     filterset_fields = ('name', 'year')
     pagination_class = PageNumberPagination
     permission_classes = [IsAdminOrReadOnly]
+    # перечисление методов необходимо для исключения метода PUT
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_queryset(self):
         """Метод поддерживает фильтрацию по категории/жанру"""
         queryset = Title.objects.all()
-        rating: int
+        #annotate(rating=Avg('reviews__score'))
+        # queryset = queryset.aggregate(rating=Avg('reviews__score'))
+        # Post.objects.annotate(Count('tags')).aggregate(Avg('tags__count'))
+        #for obj in queryset:
+        #    obj.reviews.aggregate(Avg("score"))['score__avg']
+        #    #obj.reviews.annotate(rating=Count('score')).aggregate(Avg('score__count'))
+        #title = get_object_or_404(pk=self.request.query_params.get('pk'))
+        #rating = title.reviews.annotate(Count('score')).aggregate(Avg('score__count'))
         category = self.request.query_params.get('category')
         genre = self.request.query_params.get('genre')
         if category is not None:
@@ -115,16 +116,16 @@ class ReviewViewSet(BaseCommentReviewViewSet):
 
 @api_view(['POST', ])
 def get_jwt_token(request):
-    """View function for get token."""
+    """Вью функция для получения токена."""
     data = request.data
     username = data.get('username')
     if not username:
-        resp = {'username': 'Field username required'}
+        resp = {'username': 'Поле username необходимо!'}
         return Response(resp, status=status.HTTP_400_BAD_REQUEST)
 
     confirmation_code = data.get('confirmation_code')
     if not confirmation_code:
-        resp = {'confirmation_code': 'Field confirmation_code required'}
+        resp = {'confirmation_code': 'Поле confirmation_code необходимо!'}
         return Response(resp, status=status.HTTP_400_BAD_REQUEST)
 
     user = get_object_or_404(CustomUser, username=username)
@@ -134,12 +135,14 @@ def get_jwt_token(request):
         token = str(refresh.access_token)
         return Response({'token': token}, status=status.HTTP_200_OK)
 
-    resp = {'confirmation_code': 'Invalid confirmation_code'}
+    resp = {'confirmation_code': 'Неверный confirmation_code!'}
     return Response(resp, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserViewSet(viewsets.ModelViewSet):
+    queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
+    # перечисление методов необходимо для исключения метода PUT
     http_method_names = ['get', 'post', 'patch', 'delete']
     permission_classes = [IsAdmin]
     pagination_class = PageNumberPagination
@@ -148,25 +151,18 @@ class UserViewSet(viewsets.ModelViewSet):
     lookup_field = 'username'
     lookup_value_regex = r'[a-zA-Z0-9$&(._)\-]+'
 
-    def get_queryset(self, username=None):
-        if username:
-            return get_object_or_404(CustomUser, username=username)
-
-        return CustomUser.objects.all()
-
     @action(
         methods=['patch', 'get'],
         permission_classes=[IsAuthenticated],
-        detail=False,
-        url_path='me',
-        url_name='me'
+        detail=False
     )
     def me(self, request, *args, **kwargs):
-        """Action function for get and patch profile data."""
+        """Action-функция для получения
+           и частичного изменения данных профиля."""
         user = self.request.user
         serializer = self.get_serializer(user)
         if self.request.method == 'PATCH':
-            # protect against unauthorized role changes
+            # защита от изменений со стороны неавторизованных ролей
             if request.data.get('role'):
                 request.data._mutable = True
                 del request.data['role']
@@ -191,6 +187,7 @@ class SignUp(GenericAPIView):
             username=request.data.get('username')
         )
         if users.exists():
+            # здесь выбирается первый объект из queryset созданного выше
             user = users[0]
             serializer = self.serializer_class(instance=user,
                                                data=request.data, partial=True)
@@ -203,11 +200,11 @@ class SignUp(GenericAPIView):
             email=request.data.get('email')
         )
         token = default_token_generator.make_token(user,)
-        subject = 'welcome to Ya_mdb project!'
+        subject = 'Добро пожаловать на проект yamdb!'
         message = (
-            f'Dear {user.username}, thank you'
-            f'for registering in yambd api service.'
-            f'It is your confirmation code: {token}'
+            f'Дорогой {user.username}, спасибо'
+            f'за регистрацию на yambd api service.'
+            f'Это ваш confirmation code: {token}'
         )
         email_from = settings.EMAIL_HOST_USER
         recipient_list = [user.email, ]

@@ -1,10 +1,13 @@
-from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.db import models
 
+USER = 'user'
+MODERATOR = 'moderator'
+ADMIN = 'admin'
 ROLES = (
-    ('user', 'Пользователь'),
-    ('moderator', 'Модератор'),
-    ('admin', 'Администратор'),
+    (USER, 'Пользователь'),
+    (MODERATOR, 'Модератор'),
+    (ADMIN, 'Администратор'),
 )
 
 
@@ -14,10 +17,8 @@ class CustomUser(AbstractUser):
     role = models.CharField(
         max_length=max([len(x) for (x, _) in ROLES]),
         choices=ROLES,
-        default=ROLES[0][0]
+        default=USER
     )
-    admin = models.BooleanField(default=False)
-    moderator = models.BooleanField(default=False)
 
     class Meta:
         ordering = ('date_joined',)
@@ -26,18 +27,4 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return self.username
-
-    def save(self, *args, **kwargs):
-        self.admin = (self.role == 'admin')
-        self.moderator = (self.role == 'moderator')
-        super(CustomUser, self).save(*args, **kwargs)
-
-    @property
-    def is_admin(self):
-        """Is the user a admin member?"""
-        return self.admin
-
-    @property
-    def is_moderator(self):
-        """Is the user a moderator member?"""
-        return self.moderator
+# property убрали, пошли по пути констант ADMIN, MODERATOR, USER

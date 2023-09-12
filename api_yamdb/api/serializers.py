@@ -1,16 +1,14 @@
-import re
-
+from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
-from rest_framework.relations import SlugRelatedField
 from rest_framework.exceptions import ValidationError
+from rest_framework.relations import SlugRelatedField
 from rest_framework.validators import UniqueValidator
-from django.db.models import Avg
 
+from .validators import username_validator, year_validator
 from reviews.models import (Categories, Genres, Title,
                             Review, Comment)
 from users_yamdb.models import CustomUser
-from reviews.validators import year_validator
 
 EMAIL_LENGTH = 254
 USERNAME_LENGTH = 150
@@ -75,8 +73,8 @@ class ReviewSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Review
-        fields = ['id', 'score', 'text', 'author', 'pub_date']
-        read_only_fields = ['id', 'author', 'pub_date']
+        fields = ('id', 'score', 'text', 'author', 'pub_date')
+        read_only_fields = ('id', 'author', 'pub_date')
 
     def validate_score(self, value):
         if value < MIN_RATING or value > MAX_RATING:
@@ -117,25 +115,19 @@ class UserSerializer(serializers.ModelSerializer):
 
     def validate_username(self, value):
         if value == 'me':
-            raise serializers.ValidationError('This is username forbidden.')
-
-        for ch in value:
-            if not re.search(r'^[\w.@+-]+\Z$', ch):
-                raise serializers.ValidationError(
-                    f'Character {ch} forbidden in username.'
-                )
-        return value
+            raise serializers.ValidationError('Этот username запрещён!')
+        return username_validator(value)
 
     def validate_email(self, value):
         if self.instance:
             initial_email = self.instance.email
             if initial_email and initial_email != value:
                 raise serializers.ValidationError(
-                    'Change email strictly forbidden!'
+                    'Изменять email запрещено!'
                 )
         return value
 
     class Meta:
         model = CustomUser
-        fields = ['username', 'email', 'first_name',
-                  'last_name', 'bio', 'role']
+        fields = ('username', 'email', 'first_name',
+                  'last_name', 'bio', 'role')

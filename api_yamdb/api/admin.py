@@ -1,7 +1,7 @@
 from django.contrib.admin import ModelAdmin, register
 
-from users_yamdb.models import CustomUser
 from reviews.models import Categories, Genres, Title, Review, Comment
+from users_yamdb.models import CustomUser
 
 
 @register(CustomUser)

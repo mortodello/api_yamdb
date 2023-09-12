@@ -1,8 +1,8 @@
-from django.db import models
-from django.core.validators import MinValueValidator, MaxValueValidator
 from django.contrib.auth import get_user_model
+from django.core.validators import MinValueValidator, MaxValueValidator
+from django.db import models
 
-from .validators import year_validator
+from api.validators import year_validator
 
 User = get_user_model()
 
@@ -68,7 +68,8 @@ class Title(models.Model):
         Categories,
         on_delete=models.SET_NULL,
         related_name='titles',
-        null=True
+        null=True,
+        blank=True
     )
 
     class Meta:
@@ -81,8 +82,10 @@ class Title(models.Model):
 
 
 class GenresTitles(models.Model):
-    genre = models.ForeignKey(Genres, on_delete=models.SET_NULL, null=True)
-    title = models.ForeignKey(Title, on_delete=models.SET_NULL, null=True)
+    genre = models.ForeignKey(Genres, on_delete=models.SET_NULL,
+                              null=True, blank=True)
+    title = models.ForeignKey(Title, on_delete=models.SET_NULL,
+                              null=True, blank=True)
 
     def __str__(self):
         return f'{self.genre} {self.title}'

@@ -1,6 +1,14 @@
-from datetime import date
+import re
 
+from datetime import date
 from django.core.exceptions import ValidationError
+
+
+def username_validator(value):
+    for ch in value:
+        if not re.search(r'^[\w.@+-]+\Z$', ch):
+            raise ValidationError(f'Символ {ch} запрещён в username.')
+    return value
 
 
 def year_validator(value):
