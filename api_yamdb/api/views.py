@@ -60,11 +60,9 @@ class GenresViewSet(BaseCategoriesGenresViewSet):
 class TitleViewSet(viewsets.ModelViewSet):
     """За различие в отображении данных на POST и GET запрос
        отвечает метод to_representation в сериализаторе"""
-    queryset = Title.objects.all().annotate(
-        rating=Avg('reviews__score')).all()
     serializer_class = TitleSerializer
     filter_backends = (DjangoFilterBackend,)
-    filterset_class = TitleFilter
+    filterset_fields = ('name', 'year')
     pagination_class = PageNumberPagination
     permission_classes = [IsAdminOrReadOnly]
     # перечисление методов необходимо для исключения метода PUT
