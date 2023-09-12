@@ -1,4 +1,3 @@
-from django.db.models import Avg, Count
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django_filters.rest_framework import DjangoFilterBackend
@@ -24,7 +23,7 @@ from .serializers import (
 )
 from api_yamdb import settings
 from reviews.models import Categories, Genres, Title, Review
-from users_yamdb.models import CustomUser, USER
+from users_yamdb.models import CustomUser
 
 
 class BaseCategoriesGenresViewSet(
@@ -70,14 +69,7 @@ class TitleViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Метод поддерживает фильтрацию по категории/жанру"""
         queryset = Title.objects.all()
-        #annotate(rating=Avg('reviews__score'))
-        # queryset = queryset.aggregate(rating=Avg('reviews__score'))
-        # Post.objects.annotate(Count('tags')).aggregate(Avg('tags__count'))
-        #for obj in queryset:
-        #    obj.reviews.aggregate(Avg("score"))['score__avg']
-        #    #obj.reviews.annotate(rating=Count('score')).aggregate(Avg('score__count'))
-        #title = get_object_or_404(pk=self.request.query_params.get('pk'))
-        #rating = title.reviews.annotate(Count('score')).aggregate(Avg('score__count'))
+        # queryset = Title.objects.annotate(rating=Avg('reviews__score'))
         category = self.request.query_params.get('category')
         genre = self.request.query_params.get('genre')
         if category is not None:
