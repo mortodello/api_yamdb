@@ -70,10 +70,17 @@ class TitleViewSet(viewsets.ModelViewSet):
     # перечисление методов необходимо для исключения метода PUT
     http_method_names = ['get', 'post', 'patch', 'delete']
 
-    def get_serializer_class(self):
-        if self.action == 'create' or self.action == 'partial_update':
-            return TitleSerializer
-        return TitleSerializer
+    def get_queryset(self):
+        """Метод поддерживает фильтрацию по категории/жанру"""
+        queryset = Title.objects.all()
+        # queryset = Title.objects.annotate(rating=Avg('reviews__score'))
+        category = self.request.query_params.get('category')
+        genre = self.request.query_params.get('genre')
+        if category is not None:
+            queryset = queryset.filter(category__slug=category)
+        if genre is not None:
+            queryset = queryset.filter(genre__slug=genre)
+        return queryset
 
 
 class CommentViewSet(BaseCommentReviewViewSet):
