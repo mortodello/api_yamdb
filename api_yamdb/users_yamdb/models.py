@@ -27,4 +27,18 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return self.username
-# property убрали, пошли по пути констант ADMIN, MODERATOR, USER
+
+# property вернули )) как я понял по пермишенам,
+# is_superuser существует по умолчанию, а is_stuff валит тесты
+# с ошибкой: TypeError: CustomUser() got an unexpected keyword argument 'is_staff'
+    @property
+    def is_admin(self):
+        if self.role == ADMIN:
+            return True
+        return False
+
+    @property
+    def is_moderator(self):
+        if self.role == MODERATOR:
+            return True
+        return False

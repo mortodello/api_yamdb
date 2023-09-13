@@ -1,3 +1,4 @@
+from django.db.models import Avg
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django_filters.rest_framework import DjangoFilterBackend
@@ -10,13 +11,15 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from .filters import TitleFilter
 from .permissions import (IsAdmin,
                           IsAdminOrReadOnly,
                           IsAuthorAdminModeratorOrReadOnly)
 from .serializers import (
     CategoriesSerializer,
     GenresSerializer,
-    TitleSerializer,
+    TitleGetSerializer,
+    TitlePostSerializer,
     ReviewSerializer,
     CommentSerializer,
     UserSerializer
@@ -56,27 +59,21 @@ class GenresViewSet(BaseCategoriesGenresViewSet):
 
 
 class TitleViewSet(viewsets.ModelViewSet):
-    """За различие в отображении данных на POST и GET запрос
-       отвечает метод to_representation в сериализаторе"""
-    serializer_class = TitleSerializer
+    queryset = Title.objects.all().annotate(rating=Avg('reviews__score'))
+    serializer_class = TitleGetSerializer
     filter_backends = (DjangoFilterBackend,)
-    filterset_fields = ('name', 'year')
+    filterset_class = TitleFilter
     pagination_class = PageNumberPagination
     permission_classes = [IsAdminOrReadOnly]
     # перечисление методов необходимо для исключения метода PUT
     http_method_names = ['get', 'post', 'patch', 'delete']
 
-    def get_queryset(self):
-        """Метод поддерживает фильтрацию по категории/жанру"""
-        queryset = Title.objects.all()
-        # queryset = Title.objects.annotate(rating=Avg('reviews__score'))
-        category = self.request.query_params.get('category')
-        genre = self.request.query_params.get('genre')
-        if category is not None:
-            queryset = queryset.filter(category__slug=category)
-        if genre is not None:
-            queryset = queryset.filter(genre__slug=genre)
-        return queryset
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return TitlePostSerializer
+        if self.action == 'partial_update':
+            return TitlePostSerializer
+        return TitleGetSerializer
 
 
 class CommentViewSet(BaseCommentReviewViewSet):
@@ -154,17 +151,18 @@ class UserViewSet(viewsets.ModelViewSet):
         user = self.request.user
         serializer = self.get_serializer(user)
         if self.request.method == 'PATCH':
-            # защита от изменений со стороны неавторизованных ролей
+            # здесь неправильно пояснил в прошлый раз
+            # этот if проверяет было ли добавлено поле role
+            # в информацию для изменения данных юзера
+            # и если да, то игнорирует его
             if request.data.get('role'):
                 request.data._mutable = True
                 del request.data['role']
                 request.data._mutable = False
 
-            serializer = self.get_serializer(
-                user,
-                data=request.data,
-                partial=True
-            )
+            serializer = self.get_serializer(user,
+                                             data=request.data,
+                                             partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
         return Response(serializer.data)

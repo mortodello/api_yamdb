@@ -1,4 +1,3 @@
-from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
@@ -30,31 +29,28 @@ class GenresSerializer(serializers.ModelSerializer):
         model = Genres
 
 
-class TitleSerializer(serializers.ModelSerializer):
-    category = SlugRelatedField(queryset=Categories.objects.all(),
-                                slug_field='slug', required=True)
-    genre = SlugRelatedField(queryset=Genres.objects.all(),
-                             slug_field='slug', required=True, many=True)
-    year = serializers.IntegerField(validators=(year_validator,),)
-    rating = serializers.SerializerMethodField()
+class TitleGetSerializer(serializers.ModelSerializer):
+    category = CategoriesSerializer()
+    genre = GenresSerializer(many=True)
+    rating = serializers.IntegerField()
 
     class Meta:
         fields = ('id', 'name', 'year', 'rating',
                   'description', 'genre', 'category')
         model = Title
 
-    def to_representation(self, instance):
-        """Этот метод - альтернатива двум сериализаторам.
-           Данные на POST и GET отображаются по разному"""
-        representation = super().to_representation(instance)
-        representation['category'] = CategoriesSerializer(
-            instance.category).data
-        representation['genre'] = GenresSerializer(
-            instance.genre.all(), many=True).data
-        return representation
 
-    def get_rating(self, obj):
-        return obj.reviews.aggregate(Avg("score"))['score__avg']
+class TitlePostSerializer(serializers.ModelSerializer):
+    category = SlugRelatedField(queryset=Categories.objects.all(),
+                                slug_field='slug', required=True)
+    genre = SlugRelatedField(queryset=Genres.objects.all(),
+                             slug_field='slug', required=True, many=True)
+    year = serializers.IntegerField(validators=(year_validator,),)
+
+    class Meta:
+        fields = ('id', 'name', 'year',
+                  'description', 'genre', 'category')
+        model = Title
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -109,14 +105,10 @@ class UserSerializer(serializers.ModelSerializer):
         max_length=USERNAME_LENGTH,
         required=True,
         validators=[
-            UniqueValidator(queryset=CustomUser.objects.all()),
+            UniqueValidator(queryset=CustomUser.objects.all(),),
+            username_validator
         ]
     )
-
-    def validate_username(self, value):
-        if value == 'me':
-            raise serializers.ValidationError('Этот username запрещён!')
-        return username_validator(value)
 
     def validate_email(self, value):
         if self.instance:
