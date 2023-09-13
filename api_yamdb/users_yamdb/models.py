@@ -30,7 +30,8 @@ class CustomUser(AbstractUser):
 
 # property вернули )) как я понял по пермишенам,
 # is_superuser существует по умолчанию, а is_stuff валит тесты
-# с ошибкой: TypeError: CustomUser() got an unexpected keyword argument 'is_staff'
+# с ошибкой: TypeError:
+# CustomUser() got an unexpected keyword argument 'is_staff'
     @property
     def is_admin(self):
         if self.role == ADMIN:
